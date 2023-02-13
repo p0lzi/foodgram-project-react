@@ -16,8 +16,8 @@ class BaseModel(models.Model):
 
 
 class Ingredient(BaseModel):
-    counts = models.IntegerField(validators=[MinValueValidator(1)])
-    measurement_unit = models.CharField(max_length=200)
+    measurement_unit = models.CharField("Мера измерения", max_length=200)
+    amount = models.IntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
         verbose_name = "Ингредиент"
@@ -71,6 +71,17 @@ class Recipe(BaseModel):
     class Meta:
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
+
+    def get_tags(self):
+        """ Метод возвращает теги произведения. """
+        return ', '.join([obj for obj in self.tags.all()])
+
+    def get_ingredients(self):
+        """ Метод возвращает теги произведения. """
+        return ', '.join([obj for obj in self.ingredients.all()])
+
+    def __str__(self):
+        return self.name
 
 
 class IngredientInRecipe(models.Model):

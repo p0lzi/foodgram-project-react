@@ -2,25 +2,29 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueValidator
-from recipe.models import Recipe, Ingredient, Tag
-from users.models import User
+from recipe.models import Recipe, Ingredient, Tag, IngredientInRecipe
+from users.models import User, Follow
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
 
 
 class UserSerializer(serializers.ModelSerializer):
     """ Сериализатор для работы с пользователями через права админа. """
-
-    # Переопределяем почту, чтобы проверять уникальность значений.
-    email = serializers.EmailField(
-        validators=[UniqueValidator(
-            queryset=User.objects.all(),
-            message='Пользователь с такой почтой уже существует.')]
-    )
+    is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role',
-        )
+        fields = ('email', 'id', 'username', 'first_name', 'last_name',
+                  'is_subscribed')
+
+    def get_is_subscribed(self, obj):
+        user = self.context.get('request').user
+        if isinstance(user, AnonymousUser):
+            return False
+        return Follow.objects.filter(
+            author__username=obj,
+            user=user).exists()
 
 
 class SelfUserSerializer(serializers.ModelSerializer):
@@ -37,30 +41,51 @@ class SelfUserSerializer(serializers.ModelSerializer):
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
-    """ Сериализатор для проверки данных пользователей при самостоятельной
-    регистрации через токен. """
-
-    email = serializers.EmailField(
-        validators=[UniqueValidator(queryset=User.objects.all())])
+    """ Сериализатор для проверки данных пользователей для регистрации."""
 
     class Meta:
         model = User
-        fields = ('username', 'email')
-
-    def validate(self, data):
-        # Проверяем, что username не является me
-        if data['username'] == 'me':
-            raise serializers.ValidationError("Me is invalid username")
-        return data
+        fields = ('email', 'username', 'first_name', 'last_name', 'password')
 
 
-class ObtainUserTokenSerializer(serializers.ModelSerializer):
-    """ Сериализатор для получения токена, когда пользователь уже
-    зарегистрирован. """
+class CustomAuthTokenSerializer(serializers.Serializer):
+    email = serializers.CharField(
+        label="Email",
+        write_only=True
+    )
+    password = serializers.CharField(
+        label="Password",
+        style={'input_type': 'password'},
+        trim_whitespace=False,
+        write_only=True
+    )
+    token = serializers.CharField(
+        label="Token",
+        read_only=True
+    )
 
-    class Meta:
-        model = User
-        fields = ('username', 'confirmation_code')
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+            user = authenticate(
+                request=self.context.get('request'),
+                username=User.objects.get(email=email).username,
+                password=password)
+
+            # The authenticate call simply returns None for is_active=False
+            # users. (Assuming the default ModelBackend authentication
+            # backend.)
+            if not user:
+                msg = f'Unable to log in with provided credentials.'
+                raise serializers.ValidationError(msg, code='authorization')
+        else:
+            msg = 'Must include "username" and "password".'
+            raise serializers.ValidationError(msg, code='authorization')
+
+        attrs['user'] = user
+        return attrs
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -68,113 +93,31 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
         fields = "__all__"
 
-# class CategorySerializer(serializers.ModelSerializer):
-#     """ Сериализатор для работы с категориями произведений. """
-#
-#     class Meta:
-#         model = Category
-#         fields = ('name', 'slug')
-#         lookup_field = 'slug'
-#         extra_kwargs = {
-#             'url': {'lookup_field': 'slug'}
-#         }
-#
-#
-# class GenreSerializer(serializers.ModelSerializer):
-#     """ Сериализатор для работы с жанрами произведений. """
-#
-#     class Meta:
-#         model = Genre
-#         fields = ('name', 'slug')
-#         lookup_field = 'slug'
-#         extra_kwargs = {
-#             'url': {'lookup_field': 'slug'}
-#         }
-#
-#
-# class CreateTitleSerializer(serializers.ModelSerializer):
-#     """ Сериализатор для создания произведений. """
-#
-#     category = SlugRelatedField(
-#         slug_field='slug',
-#         queryset=Category.objects.all(),
-#     )
-#     genre = SlugRelatedField(
-#         many=True,
-#         queryset=Genre.objects.all(),
-#         slug_field='slug'
-#     )
-#
-#     class Meta:
-#         model = Title
-#         fields = ('id', 'name', 'year', 'description', 'genre', 'category')
-#
-#
-# class ReadTitleSerializer(serializers.ModelSerializer):
-#     """ Сериализатор для чтения произведений. """
-#
-#     category = CategorySerializer()
-#     genre = GenreSerializer(many=True)
-#     rating = serializers.SerializerMethodField(method_name='get_rating')
-#
-#     class Meta:
-#         model = Title
-#         fields = ('id', 'name', 'year', 'rating', 'description', 'genre',
-#                   'category')
-#
-#     @staticmethod
-#     def get_rating(obj):
-#         """ Метод для просчитывания рейтинга произведений. """
-#
-#         reviews = Review.objects.filter(title_id=obj.id)
-#         scores_for_title = (
-#             title.score for title
-#             in reviews
-#         )
-#         if reviews:
-#             return sum(scores_for_title) / reviews.count()
-#         return None
-#
-#
-# class ReviewSerializer(serializers.ModelSerializer):
-#     """ Сериализатор для работы с отзывами пользователей по произведениям. """
-#
-#     author = serializers.SlugRelatedField(
-#         read_only=True,
-#         slug_field='username',
-#         default=serializers.CurrentUserDefault()
-#     )
-#
-#     def validate(self, data):
-#         request = self.context.get('request')
-#         if request.method != 'POST':
-#             return data
-#
-#         reviewer = request.user
-#         title_id = self.context.get('view').kwargs.get('title_id')
-#         title = get_object_or_404(Title, pk=title_id)
-#
-#         # Проверяем существует ли уже такой отзыв
-#         if Review.objects.filter(author=reviewer, title=title).exists():
-#             raise serializers.ValidationError(
-#                 'Нельзя добавить второй отзыв на то же самое произведение.'
-#             )
-#         return data
-#
-#     class Meta:
-#         model = Review
-#         fields = ('id', 'text', 'author', 'score', 'pub_date',)
-#
-#
-# class CommentSerializer(serializers.ModelSerializer):
-#     """ Сериализатор для работы с комментариями пользователей к отзывам. """
-#
-#     author = serializers.SlugRelatedField(
-#         read_only=True,
-#         slug_field='username',
-#         default=serializers.CurrentUserDefault()
-#     )
-#
-#     class Meta:
-#         model = Comment
-#         fields = ('id', 'text', 'author', 'pub_date')
+
+class IngredientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = ("id", "name", "measurement_unit")
+
+
+class IngredientSerializerForRecipe(serializers.ModelSerializer):
+
+    class Meta:
+        model = Ingredient
+        fields = ("id", "name", "measurement_unit", "amount")
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True)
+    author = UserSerializer()
+    ingredients = IngredientSerializerForRecipe(many=True)
+
+    class Meta:
+        model = Recipe
+        fields = "__all__"
+
+    def create(self, validated_data):
+        ingredients = validated_data.pop('ingredients')
+
+
+

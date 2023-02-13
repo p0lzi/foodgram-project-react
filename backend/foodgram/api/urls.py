@@ -1,11 +1,12 @@
 from django.urls import include, path
 from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
+from rest_framework.authtoken import views
 
 from .views import (TagViewSet, RecipeViewSet, DownloadShoppingCartViewSet,
                     FavoriteRecipeViewSet, SubscriptionsViewSet,
-                    IngredientsViewSet, ObtainUserToken,
-                    RegisterUser, UserViewSet)
+                    IngredientsViewSet, UserViewSet, CustomObtainAuthToken,
+                    CustomDestroyToken)
 
 app_name = 'api'
 
@@ -33,5 +34,7 @@ router_v1.register(r'ingredients', IngredientsViewSet, basename='ingredient')
 
 urlpatterns = [
     path('', include(router_v1.urls)),
-    path('auth/token/login/', ObtainUserToken.as_view(), name='token')
+    # path('auth/token/login/', ObtainUserToken.as_view(), name='token'),
+    path('auth/token/login/', CustomObtainAuthToken.as_view(), name='token'),
+    path('auth/token/logout/', CustomDestroyToken.as_view(), name='logout')
 ]
