@@ -6,7 +6,7 @@ from users.models import User
 
 class BaseModel(models.Model):
     """ Общая модель для классов рецепта, тегов и ингридиентов."""
-    name = models.CharField('Название', max_length=200)
+    name = models.CharField('Название', max_length=200, unique=True)
 
     class Meta:
         abstract = True
@@ -17,14 +17,10 @@ class BaseModel(models.Model):
 
 class Ingredient(BaseModel):
     measurement_unit = models.CharField("Мера измерения", max_length=200)
-    amount = models.IntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
         verbose_name = "Ингредиент"
         verbose_name_plural = "Ингредиенты"
-
-    def __str__(self):
-        return f"{self.name} {self.measurement_unit}"
 
 
 class Tag(BaseModel):
@@ -41,7 +37,6 @@ class Tag(BaseModel):
 
 
 class Recipe(BaseModel):
-    name = models.CharField(max_length=200)
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -56,17 +51,13 @@ class Recipe(BaseModel):
         null=True,
         default=None,
         help_text='Загрузите картинку')
-    ingredients = models.ManyToManyField(
-        Ingredient,
-        through='IngredientInRecipe',
-        verbose_name="Ингридиенты"
-    )
     tags = models.ManyToManyField(
         Tag,
         through='TagOfRecipes',
         verbose_name="Ингридиенты"
     )
     cooking_time = models.IntegerField(validators=[MinValueValidator(1)])
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Рецепт"
@@ -80,19 +71,18 @@ class Recipe(BaseModel):
         """ Метод возвращает теги произведения. """
         return ', '.join([obj for obj in self.ingredients.all()])
 
-    def __str__(self):
-        return self.name
-
 
 class IngredientInRecipe(models.Model):
     """ Связующая модель для рецептов и ингредиентов."""
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
+                               related_name="ingredients")
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
+    amount = models.IntegerField(validators=[MinValueValidator(1)])
 
 
 class TagOfRecipes(models.Model):
     """ Связующая модель для рецептов и тегов."""
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, )
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
 
 
@@ -100,25 +90,39 @@ class Favorites(models.Model):
     """ Любимые рецепты пользователей"""
     user = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name='favorites')
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
+                               related_name='is_favorited')
 
     def __str__(self):
-        return self.recipe
+        return self.recipe.name
 
     class Meta:
         verbose_name = "Любимый рецепт"
         verbose_name_plural = "Любимые рецепты"
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='unique_user_recipe'
+            )
+        ]
 
 
 class Basket(models.Model):
     """ Корзина рецептов пользователей"""
     user = models.ForeignKey(User, on_delete=models.CASCADE,
                              related_name='basket')
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
+                               related_name='in_basket')
 
     def __str__(self):
-        return self.recipe
+        return self.recipe.name
 
     class Meta:
         verbose_name = "Рецепт в корзине"
         verbose_name_plural = "Рецепты в корзине"
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'recipe'),
+                name='unique_user_recipe'
+            )
+        ]
