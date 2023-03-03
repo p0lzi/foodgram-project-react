@@ -10,6 +10,7 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=150)
 
     class Meta:
+
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -32,6 +33,7 @@ class Subscribe(models.Model):
     )
 
     class Meta:
+
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
         constraints = [

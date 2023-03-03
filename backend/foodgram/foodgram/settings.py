@@ -1,6 +1,8 @@
 import os
 from datetime import timedelta
 
+import rest_framework.authentication
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.getenv(
@@ -18,8 +20,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework.authtoken',
     'rest_framework',
+    'rest_framework.authtoken',
+    'djoser',
+    # 'rest_framework_simplejwt',
     # 'corsheaders',
     'django_filters',
     'api.apps.ApiConfig',
@@ -113,19 +117,38 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 AUTH_USER_MODEL = 'users.User'
 
+
+
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        # Для работы
-        'rest_framework.permissions.IsAuthenticated',
-    ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
 }
+
+DJOSER = {
+    'SEND_CONFIRMATION_EMAIL': False,
+    'SERIALIZERS': {
+        'user': 'api.serializers.UserSerializer',
+    },
+    'PERMISSIONS': {
+        'user_list': ['rest_framework.permissions.AllowAny'],
+        'user': ['rest_framework.permissions.IsAuthenticated'],
+    },
+    'LOGIN_FIELD': 'email',
+    'HIDE_USERS': False,
+}
+
+
 
 # SIMPLE_JWT = {
 #     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
@@ -137,6 +160,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/api/.*$'
 
-# CORS_ALLOWED_ORIGINS = [
-#     'http://localhost:3000',
-# ]
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
