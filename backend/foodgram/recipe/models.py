@@ -1,6 +1,5 @@
-from django.core.validators import RegexValidator, MinValueValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
-
 from users.models import User
 
 
@@ -15,12 +14,20 @@ class BaseModel(models.Model):
         return self.name
 
 
-class Ingredient(BaseModel):
+class Ingredient(models.Model):
+    name = models.CharField('Название', max_length=200)
     measurement_unit = models.CharField("Мера измерения", max_length=200)
 
     class Meta:
         verbose_name = "Ингредиент"
         verbose_name_plural = "Ингредиенты"
+
+    constraints = [
+        models.UniqueConstraint(
+            fields=('name', 'measurement_unit'),
+            name='unique_name_measurement_unit'
+        )
+    ]
 
 
 class Tag(BaseModel):
@@ -62,14 +69,6 @@ class Recipe(BaseModel):
     class Meta:
         verbose_name = "Рецепт"
         verbose_name_plural = "Рецепты"
-
-    def get_tags(self):
-        """ Метод возвращает теги произведения. """
-        return ', '.join([obj for obj in self.tags.all()])
-
-    def get_ingredients(self):
-        """ Метод возвращает теги произведения. """
-        return ', '.join([obj for obj in self.ingredients.all()])
 
 
 class IngredientInRecipe(models.Model):
