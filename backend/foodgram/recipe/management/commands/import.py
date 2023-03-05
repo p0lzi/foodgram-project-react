@@ -1,8 +1,7 @@
 from json import load
 
 from django.core.management import BaseCommand
-# Импорт моделей
-from recipe.models import Ingredient
+from recipe.models import Ingredient, Tag
 
 
 class Command(BaseCommand):
@@ -12,6 +11,7 @@ class Command(BaseCommand):
     models = (
         (
             (Ingredient, 'ingredients'),
+            (Tag, 'tags'),
         ),
     )
 
@@ -20,11 +20,10 @@ class Command(BaseCommand):
 
         for data in self.models:
             for model, file in data:
-                with open(f'../../data/{file}.json', encoding='utf-8') as f:
+                with open(f'data/{file}.json', encoding='utf-8') as f:
                     print(f'Начался импорт данных {file}')
                     for row in load(f):
-                        if not model.objects.filter(**row).exists():
-                            model.objects.create(**row)
+                        model.objects.get_or_create(**row)
                 print(f'Импорт данных {file} завершен.')
 
     def handle(self, *args, **options):

@@ -2,35 +2,25 @@ import re
 from io import StringIO
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Sum
 from django.db.utils import IntegrityError
 from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from recipe.models import Ingredient, Recipe, Tag
+from recipe.models import Basket, Favorite, Ingredient, Recipe, Tag
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from users.models import User
 
 from .filters import RecipeFilter
-from .serializers import (IngredientSerializer, RecipeCreateSerializer,
-                          RecipeForUserSerializer, RecipeSerializer,
-                          SubscriptionsSerializer, TagSerializer)
-
-
-class CreateListRetrieveViewSet(mixins.CreateModelMixin,
-                                mixins.ListModelMixin,
-                                mixins.RetrieveModelMixin,
-                                viewsets.GenericViewSet):
-    """ Создаем базовый вью сет. """
-    pass
-
-
-class CreateDestroyViewSet(mixins.CreateModelMixin,
-                           mixins.DestroyModelMixin,
-                           viewsets.GenericViewSet):
-    pass
+from .serializers import (FavoriteSerializer, IngredientSerializer,
+                          RecipeCreateSerializer, RecipeSerializer,
+                          ShoppingCartSerializer, SubscriptionsSerializer,
+                          TagSerializer)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -57,32 +47,33 @@ class RecipeViewSet(viewsets.ModelViewSet):
     ordering = ('-created',)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-
     def get_serializer_class(self):
         if self.action in ("create", "partial_update"):
             return RecipeCreateSerializer
         return RecipeSerializer
 
+    @staticmethod
+    def obj_create(serializer, request, pk):
+        serializer = serializer(data={"recipe_id": pk,
+                                      "user_id": request.user.pk})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors,
+                        status=status.HTTP_400_BAD_REQUEST)
 
-class DownloadShoppingCartView(APIView):
-    def get(self, request):
-        shopping_cart = {}
-        ingredients = request.user.basket.prefetch_related(
-            "recipe"
-        ).values_list(
-            'recipe__ingredients__ingredient__name',
-            'recipe__ingredients__amount')
+    @staticmethod
+    @action(detail=False, methods=['get'],
+            permission_classes=[IsAuthenticated])
+    def download_shopping_cart(request):
+        result = ["shopping cart is empty"]
+        ingredients = request.user.basket.prefetch_related("recipe").values(
+            "recipe__ingredients__ingredient__name").annotate(
+            Sum("recipe__ingredients__amount"))
         if ingredients:
-            for ingredient, amount in ingredients:
-                if ingredient in shopping_cart:
-                    shopping_cart[ingredient] += amount
-                else:
-                    shopping_cart[ingredient] = amount
-            result = [f"{k}: {v}\n" for k, v in shopping_cart.items()]
-        else:
-            result = ["shopping cart is empty"]
+            result = [f"{obj.get('recipe__ingredients__ingredient__name')}: "
+                      f"{obj.get('recipe__ingredients__amount__sum')}\n"
+                      for obj in ingredients]
         buffer = StringIO()
         buffer.writelines(result)
         buffer.seek(0)
@@ -92,13 +83,35 @@ class DownloadShoppingCartView(APIView):
                             filename='shopping_cart.txt',
                             status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'],
+            permission_classes=[IsAuthenticated])
+    def shopping_cart(self, request, pk):
+        return self.obj_create(ShoppingCartSerializer, request, pk)
+
+    @shopping_cart.mapping.delete
+    def shopping_cart_delete(self, request, pk):
+        get_object_or_404(Basket, recipe_id=pk, user_id=request.user.pk
+                          ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'],
+            permission_classes=[IsAuthenticated])
+    def favorite(self, request, pk):
+        return self.obj_create(FavoriteSerializer, request, pk)
+
+    @favorite.mapping.delete
+    def favorite_delete(self, request, pk):
+        get_object_or_404(Favorite, recipe_id=pk, user_id=request.user.pk
+                          ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class SubscriptionsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = SubscriptionsSerializer
     filter_backends = (DjangoFilterBackend,)
 
     def get_queryset(self):
-        return User.objects.filter(follower__user=self.request.user)
+        return User.objects.filter(followers__user=self.request.user)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -118,81 +131,13 @@ class SubscriptionsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return Response(serializer.data)
 
 
-class ShoppingCartView(APIView):
-
-    @staticmethod
-    def post(request, recipe_id):
-        try:
-            recipe = Recipe.objects.get(pk=recipe_id)
-            request.user.basket.create(recipe=recipe)
-        except IntegrityError:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Рецепт с id {recipe_id} есть в корзине"})
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Рецепт с id {recipe_id} не существует"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-        serializer = RecipeForUserSerializer(recipe)
-        return Response(serializer.data)
-
-    @staticmethod
-    def delete(request, recipe_id):
-        try:
-            request.user.basket.get(recipe_id=recipe_id).delete()
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"рецепта с id {recipe_id} нет в корзине"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class FavoriteRecipeView(APIView):
-
-    @staticmethod
-    def post(request, recipe_id):
-        try:
-            recipe = Recipe.objects.get(pk=recipe_id)
-            request.user.favorites.create(recipe=recipe)
-        except IntegrityError:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Рецепт с id {recipe_id} есть в избранном"})
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Рецепт с id {recipe_id} не существует"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-        serializer = RecipeForUserSerializer(recipe)
-        return Response(serializer.data)
-
-    @staticmethod
-    def delete(request, recipe_id):
-        try:
-            request.user.favorites.get(recipe_id=recipe_id).delete()
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"рецепта с id {recipe_id} нет в избранном"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 class SubscribeView(APIView):
 
     @staticmethod
     def post(request, user_id):
         try:
             author = User.objects.get(pk=user_id)
-            request.user.following.create(author_id=user_id)
+            request.user.followings.create(author_id=user_id)
         except IntegrityError:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
@@ -211,7 +156,7 @@ class SubscribeView(APIView):
     @staticmethod
     def delete(request, user_id):
         try:
-            request.user.following.get(author_id=user_id).delete()
+            request.user.followings.get(author_id=user_id).delete()
         except ObjectDoesNotExist:
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
