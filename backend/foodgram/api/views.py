@@ -1,10 +1,7 @@
 import re
 from io import StringIO
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Sum
-from django.db.utils import IntegrityError
-from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from recipe.models import Basket, Favorite, Ingredient, Recipe, Tag
@@ -14,13 +11,13 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from users.models import User
 
+from users.models import User, Subscribe
 from .filters import RecipeFilter
 from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeSerializer,
                           ShoppingCartSerializer, SubscriptionsSerializer,
-                          TagSerializer)
+                          TagSerializer, SubscribeSerializer)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -56,32 +53,35 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def obj_create(serializer, request, pk):
         serializer = serializer(data={"recipe_id": pk,
                                       "user_id": request.user.pk})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors,
-                        status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
+    def send_file(result):
+        buffer = StringIO()
+        # buffer = BytesIO()
+        buffer.writelines(result)
+        buffer.seek(0)
+        return Response(
+            buffer.read(),
+            headers={
+                'Content-Disposition':
+                    'as_attachment=True; filename="shopping_cart.txt"'},
+            content_type='text/plain')
+
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated])
-    def download_shopping_cart(request):
+    def download_shopping_cart(self, request):
         result = ["shopping cart is empty"]
-        ingredients = request.user.basket.prefetch_related("recipe").values(
+        ingredients = request.user.basket_set.prefetch_related("recipe").values(
             "recipe__ingredients__ingredient__name").annotate(
             Sum("recipe__ingredients__amount"))
         if ingredients:
             result = [f"{obj.get('recipe__ingredients__ingredient__name')}: "
                       f"{obj.get('recipe__ingredients__amount__sum')}\n"
                       for obj in ingredients]
-        buffer = StringIO()
-        buffer.writelines(result)
-        buffer.seek(0)
-        return FileResponse(buffer.read(),
-                            content_type='text/plain',
-                            as_attachment=True,
-                            filename='shopping_cart.txt',
-                            status=status.HTTP_200_OK)
+        return self.send_file(result)
 
     @action(detail=True, methods=['post'],
             permission_classes=[IsAuthenticated])
@@ -135,32 +135,15 @@ class SubscribeView(APIView):
 
     @staticmethod
     def post(request, user_id):
-        try:
-            author = User.objects.get(pk=user_id)
-            request.user.followings.create(author_id=user_id)
-        except IntegrityError:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Автор с id {user_id} есть в подписках"})
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Автор с id {user_id} не существует"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
-
-        serializer = SubscriptionsSerializer(author,
-                                             context={"user": request.user})
-        return Response(serializer.data)
+        serializer = SubscribeSerializer(data={
+            "author_id": user_id,
+            "user_id": request.user.pk})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
     def delete(request, user_id):
-        try:
-            request.user.followings.get(author_id=user_id).delete()
-        except ObjectDoesNotExist:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST,
-                data={"errors": f"Автор с id {user_id} нет в подписках"})
-        except AttributeError:
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        get_object_or_404(Subscribe, author_id=user_id, user_id=request.user.pk
+                          ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

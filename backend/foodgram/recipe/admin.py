@@ -28,8 +28,8 @@ class RecipeAdmin(admin.ModelAdmin):
     def get_quantity_in_favorites(self, obj):
         return obj.favorite_set.count()
 
-    get_tags.short_description = "Теги"
-    get_quantity_in_favorites.short_description = "Количество в избранном"
+    get_tags.short_description = 'Теги'
+    get_quantity_in_favorites.short_description = 'Количество в избранном'
 
 
 @admin.register(Tag)

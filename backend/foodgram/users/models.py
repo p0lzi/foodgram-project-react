@@ -10,10 +10,10 @@ class User(AbstractUser):
         'Электронная почта', unique=True,
         max_length=settings.MAX_LENGTH_FOR_EMAIL_OF_MODELS)
     first_name = models.CharField(
-        "Имя",
+        'Имя',
         max_length=settings.MAX_LENGTH_FOR_NAME_OF_MODELS)
     last_name = models.CharField(
-        "Фамилия",
+        'Фамилия',
         max_length=settings.MAX_LENGTH_FOR_NAME_OF_MODELS)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
@@ -30,20 +30,21 @@ class User(AbstractUser):
 class Subscribe(models.Model):
     user = models.ForeignKey(
         User,
-        related_name="followings",
+        related_name='followings',
         on_delete=models.CASCADE,
         verbose_name='Подписчик'
     )
     author = models.ForeignKey(
         User,
-        related_name="followers",
+        related_name='followers',
         on_delete=models.CASCADE,
         verbose_name='Подписка'
     )
 
     class Meta:
-        verbose_name = "Подписка"
-        verbose_name_plural = "Подписки"
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        ordering = ('user', 'author')
         constraints = [
             models.UniqueConstraint(
                 fields=('user', 'author'),

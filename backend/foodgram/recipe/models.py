@@ -19,13 +19,13 @@ class BaseModel(models.Model):
 
 class Ingredient(models.Model):
     name = models.CharField(
-        "Название", max_length=settings.MAX_LENGTH_FOR_FIELDS_OF_MODELS)
+        'Название', max_length=settings.MAX_LENGTH_FOR_FIELDS_OF_MODELS)
     measurement_unit = models.CharField(
-        "Мера измерения", max_length=settings.MAX_LENGTH_FOR_FIELDS_OF_MODELS)
+        'Мера измерения', max_length=settings.MAX_LENGTH_FOR_FIELDS_OF_MODELS)
 
     class Meta:
-        verbose_name = "Ингредиент"
-        verbose_name_plural = "Ингредиенты"
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиент'
 
     constraints = [
         models.UniqueConstraint(
@@ -49,8 +49,8 @@ class Tag(BaseModel):
             RegexValidator(regex='[-a-zA-Z0-9_]+')])
 
     class Meta:
-        verbose_name = "Тег"
-        verbose_name_plural = "Теги"
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
 
 
 class Recipe(BaseModel):
@@ -62,7 +62,7 @@ class Recipe(BaseModel):
     )
     text = models.TextField()
     image = models.ImageField(
-        "Картинка",
+        'Картинка',
         upload_to='recipes/images/',
         blank=True,
         null=True,
@@ -71,32 +71,26 @@ class Recipe(BaseModel):
     tags = models.ManyToManyField(
         Tag,
         through='TagOfRecipes',
-        verbose_name="Ингридиенты"
+        verbose_name='Ингридиенты'
     )
-    cooking_time = models.SmallIntegerField(
-        "Время приготовления",
-        validators=[
-            MinValueValidator(
-                1, "Время приготолвение должно быть больше или равным 1")])
+    cooking_time = models.SmallIntegerField('Время приготовления',)
     created = models.DateTimeField("Время создания рецепта",
                                    auto_now_add=True)
 
     class Meta:
-        verbose_name = "Рецепт"
-        verbose_name_plural = "Рецепты"
+        verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
         ordering = ("-created",)
 
 
 class IngredientInRecipe(models.Model):
     """ Связующая модель для рецептов и ингредиентов."""
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
-                               related_name="ingredients",
-                               verbose_name="Рецепт")
+                               related_name='ingredients',
+                               verbose_name='Рецепт')
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE,
-                                   verbose_name="Ингредиент")
-    amount = models.SmallIntegerField("Количество", validators=[
-        MinValueValidator(
-            1, "Количество ингрединта должно быть больше или равным 1")])
+                                   verbose_name='Ингредиент')
+    amount = models.SmallIntegerField('Количество')
 
     class Meta:
         constraints = [
@@ -122,10 +116,18 @@ class TagOfRecipes(models.Model):
 
 
 class BasicModelOfUserRecipeRelationship(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE,
-                             verbose_name="Пользователь")
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE,
-                               verbose_name="Рецепт")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        verbose_name='Пользователь',
+        # related_name='%(class)s',
+        # related_query_name='%(class)s'
+    )
+    recipe = models.ForeignKey(
+        Recipe, on_delete=models.CASCADE,
+        verbose_name='Рецепт'
+        # related_name='in_%(class)s_of_users',
+        # related_query_name='in_%(class)s_of_users'
+    )
 
     class Meta:
         abstract = True
@@ -138,8 +140,8 @@ class Favorite(BasicModelOfUserRecipeRelationship):
     """ Любимые рецепты пользователей"""
 
     class Meta:
-        verbose_name = "Любимый рецепт"
-        verbose_name_plural = "Любимые рецепты"
+        verbose_name = 'Любимый рецепт'
+        verbose_name_plural = 'Любимые рецепты'
         constraints = [
             models.UniqueConstraint(
                 fields=('user', 'recipe'),
@@ -152,8 +154,8 @@ class Basket(BasicModelOfUserRecipeRelationship):
     """ Корзина рецептов пользователей"""
 
     class Meta:
-        verbose_name = "Рецепт в корзине"
-        verbose_name_plural = "Рецепты в корзине"
+        verbose_name = 'Рецепт в корзине'
+        verbose_name_plural = 'Рецепты в корзине'
         constraints = [
             models.UniqueConstraint(
                 fields=('user', 'recipe'),

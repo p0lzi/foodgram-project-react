@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.models import Group
 
 from .models import User
 
@@ -20,3 +21,6 @@ class UserAdmin(admin.ModelAdmin):
 
     get_quantity_of_followers.short_description = "Количество подписчиков"
     get_quantity_of_recipes.short_description = "Количество рецептов"
+
+
+admin.site.unregister(Group)
