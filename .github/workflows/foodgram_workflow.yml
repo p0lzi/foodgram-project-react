@@ -49,7 +49,7 @@ jobs:
         with:
           push: true
           tags: p0lzi/foodgram:latest
-          context: ./foodgram/
+          context: ./backend/foodgram/
 
   deploy:
     runs-on: ubuntu-latest
