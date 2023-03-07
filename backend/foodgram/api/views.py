@@ -11,13 +11,13 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from users.models import Subscribe, User
 
-from users.models import User, Subscribe
 from .filters import RecipeFilter
 from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeSerializer,
-                          ShoppingCartSerializer, SubscriptionsSerializer,
-                          TagSerializer, SubscribeSerializer)
+                          ShoppingCartSerializer, SubscribeSerializer,
+                          SubscriptionsSerializer, TagSerializer)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -58,9 +58,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def send_file(result):
+    def send_file(ingredients):
+        result = (["shopping cart is empty"] if not ingredients else
+                  [f"{obj.get('recipe__ingredients__ingredient__name')}: "
+                   f"{obj.get('recipe__ingredients__amount__sum')}\n"
+                   for obj in ingredients])
         buffer = StringIO()
-        # buffer = BytesIO()
         buffer.writelines(result)
         buffer.seek(0)
         return Response(
@@ -73,15 +76,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
-        result = ["shopping cart is empty"]
-        ingredients = request.user.basket_set.prefetch_related("recipe").values(
+        ingredients = request.user.baskets.prefetch_related("recipe").values(
             "recipe__ingredients__ingredient__name").annotate(
             Sum("recipe__ingredients__amount"))
-        if ingredients:
-            result = [f"{obj.get('recipe__ingredients__ingredient__name')}: "
-                      f"{obj.get('recipe__ingredients__amount__sum')}\n"
-                      for obj in ingredients]
-        return self.send_file(result)
+        return self.send_file(ingredients)
 
     @action(detail=True, methods=['post'],
             permission_classes=[IsAuthenticated])

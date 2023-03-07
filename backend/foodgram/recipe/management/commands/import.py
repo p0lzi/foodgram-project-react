@@ -1,7 +1,6 @@
 from json import load
 
 from django.core.management import BaseCommand
-
 from recipe.models import Ingredient, Tag
 
 

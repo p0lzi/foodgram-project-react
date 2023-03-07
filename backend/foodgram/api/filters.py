@@ -16,8 +16,8 @@ class RecipeFilter(filters.FilterSet):
 
     def filter_is_set(self, queryset, name, value):
         names = {
-            "is_favorited": "favorite__user",
-            "is_in_shopping_cart": "basket__user"
+            "is_favorited": "favorites__user",
+            "is_in_shopping_cart": "baskets__user"
         }
         if value:
             return queryset.filter(**{names[name]: self.request.user})

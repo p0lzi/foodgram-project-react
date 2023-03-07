@@ -1,10 +1,23 @@
+from django import forms
 from django.contrib import admin
 
 from .models import Ingredient, IngredientInRecipe, Recipe, Tag, TagOfRecipes
 
 
+class RecipeForm(forms.ModelForm):
+    class Meta:
+        model = Recipe
+        fields = "__all__"
+
+    def clean(self):
+        if not self.cleaned_data.get('ingredient'):
+            raise forms.ValidationError('В рецепте должны быть ингредиенты')
+        return self.cleaned_data
+
+
 class IngredientInline(admin.TabularInline):
     model = IngredientInRecipe
+    form = RecipeForm
 
 
 class TagsInline(admin.TabularInline):

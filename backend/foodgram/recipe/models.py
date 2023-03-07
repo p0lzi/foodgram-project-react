@@ -1,6 +1,7 @@
 from django.conf import settings
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import RegexValidator
 from django.db import models
+
 from users.models import User
 
 
@@ -73,7 +74,7 @@ class Recipe(BaseModel):
         through='TagOfRecipes',
         verbose_name='Ингридиенты'
     )
-    cooking_time = models.SmallIntegerField('Время приготовления',)
+    cooking_time = models.PositiveSmallIntegerField('Время приготовления',)
     created = models.DateTimeField("Время создания рецепта",
                                    auto_now_add=True)
 
@@ -90,7 +91,7 @@ class IngredientInRecipe(models.Model):
                                verbose_name='Рецепт')
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE,
                                    verbose_name='Ингредиент')
-    amount = models.SmallIntegerField('Количество')
+    amount = models.PositiveSmallIntegerField('Количество')
 
     class Meta:
         constraints = [
@@ -140,6 +141,7 @@ class Favorite(BasicModelOfUserRecipeRelationship):
     """ Любимые рецепты пользователей"""
 
     class Meta:
+        default_related_name = "favorites"
         verbose_name = 'Любимый рецепт'
         verbose_name_plural = 'Любимые рецепты'
         constraints = [
@@ -154,6 +156,7 @@ class Basket(BasicModelOfUserRecipeRelationship):
     """ Корзина рецептов пользователей"""
 
     class Meta:
+        default_related_name = "baskets"
         verbose_name = 'Рецепт в корзине'
         verbose_name_plural = 'Рецепты в корзине'
         constraints = [

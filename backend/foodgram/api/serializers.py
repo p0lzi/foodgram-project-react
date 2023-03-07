@@ -1,8 +1,8 @@
 from drf_extra_fields.fields import Base64ImageField
-from recipe.models import (Basket, Favorite, Ingredient, IngredientInRecipe,
-                           Recipe, Tag, TagOfRecipes)
 from rest_framework import serializers
 
+from recipe.models import (Basket, Favorite, Ingredient, IngredientInRecipe,
+                           Recipe, Tag, TagOfRecipes)
 from users.models import Subscribe, User
 
 
@@ -17,9 +17,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
-        author = ((request.user if request.user.is_authenticated else None)
-                  if request else self.root.instance.author)
-        return author and author.followers.filter(user=obj).exists()
+        return (request and request.user.is_authenticated
+                and request.user.followers.filter(user=obj).exists())
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -83,15 +82,15 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def get_is_favorited(self, obj):
         request = self.context.get('request')
-        user = ((request.user if request.user.is_authenticated else None)
-                if request else self.root.instance.author)
-        return user and user.favorite_set.filter(recipe__name=obj).exists()
+        return (request and request.user.is_authenticated
+                and request.user.favorites.filter(
+                    recipe__name=obj).exists())
 
     def get_is_in_shopping_cart(self, obj):
         request = self.context.get('request')
-        user = ((request.user if request.user.is_authenticated else None)
-                if request else self.root.instance.author)
-        return user and user.basket_set.filter(recipe__name=obj).exists()
+        return (request and request.user.is_authenticated
+                and request.user.baskets.filter(
+                    recipe__name=obj).exists())
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
@@ -116,7 +115,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             errors.append("Рецепт не может быть без ингредиентов")
         if not (lambda elems: True if len(elems) == len(set(
                 [elem.get('ingredient_id') for elem in elems])) else False)(
-            value):
+                    value):
             errors.append("Набор ингредиентов должен быть уникальным")
         if errors:
             raise serializers.ValidationError(errors)
@@ -128,7 +127,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         if not value:
             errors.append("Необходимо выбрать тег")
         if not (lambda elems: True
-        if len(elems) == len(set(elems)) else False)(value):
+                if len(elems) == len(set(elems)) else False)(value):
             errors.append("Набор тегов должен быть уникальным")
         if errors:
             raise serializers.ValidationError(errors)
@@ -195,9 +194,8 @@ class SubscriptionsSerializer(UserSerializer):
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
-        author = ((request.user if request.user.is_authenticated else None)
-                  if request else self.context.get('user'))
-        return author and author.followers.filter(user=obj).exists()
+        return (request and request.user.is_authenticated
+                and request.user.followers.filter(user=obj).exists())
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
