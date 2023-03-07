@@ -14,7 +14,7 @@ services:
     volumes:
       - static_value:/app/static/
       - media_value:/app/media/
-      - redoc_yaml:/app/api/static/
+#      - redoc_yaml:/app/api/static/
     depends_on:
       - db
     env_file:
@@ -40,7 +40,7 @@ services:
       - ../docs/:/usr/share/nginx/html/api/docs/
       - static_value:/var/html/static/
       - media_value:/var/html/media/
-      - redoc_yaml:/var/html/static/
+#      - redoc_yaml:/var/html/static/
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     depends_on:
@@ -58,4 +58,4 @@ volumes:
   static_value:
   media_value:
   postgresql_value:
-  redoc_yaml:
+#  redoc_yaml:
