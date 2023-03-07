@@ -8,8 +8,8 @@ services:
       - ./.env
 
   web:
-    image: p0lzi/foodgram-backend:latest
-#    build: ../backend
+#    image: p0lzi/foodgram-backend:latest
+    build: ../backend
     restart: always
     volumes:
       - static_value:/app/static/
@@ -21,15 +21,16 @@ services:
       - ./.env
 
   frontend:
-    image: p0lzi/foodgram-frontend:latest
-#    build:
-#      context: ../frontend
-#      dockerfile: Dockerfile
+#    image: p0lzi/foodgram-frontend:latest
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
     volumes:
       - ../frontend/:/app/result_build/
 
   nginx:
-    image: nginx:1.19.3 # nginx:1.21.3-alpine
+#    image: nginx:1.19.3
+    image: nginx:1.21.3-alpine
     ports:
       - "80:80"
       - "443:443"
