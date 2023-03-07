@@ -8,8 +8,8 @@ services:
       - ./.env
 
   web:
-#    image: p0lzi/foodgram:latest
-    build: ../backend
+    image: p0lzi/foodgram:latest
+#    build: ../backend
     restart: always
     volumes:
       - static_value:/app/static/
