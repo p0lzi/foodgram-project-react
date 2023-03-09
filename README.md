@@ -1,7 +1,7 @@
 ![foodgram workflow](https://github.com/p0lzi/foodgram-project-react/actions/workflows/foodgram_workflow.yml/badge.svg)
 # Проект «FoodGram»
 
-# URL дипломного проекта foodgram stend-p0lzi2.ddns.net
+# URL дипломного проекта foodgram https://stend-p0lzi2.ddns.net
 
 
 ### Краткое описание проекта

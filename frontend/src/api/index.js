@@ -400,4 +400,4 @@ class Api {
   }
 }
 
-export default new Api(process.env.API_URL || 'http://localhost', { 'content-type': 'application/json' })
+export default new Api(process.env.API_URL || 'https://stend-p0lzi2.ddns.net', { 'content-type': 'application/json' })
