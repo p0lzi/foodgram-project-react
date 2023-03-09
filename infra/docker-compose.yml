@@ -22,9 +22,9 @@ services:
   frontend:
     image: p0lzi/foodgram-frontend:latest
 
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+#    build:
+#      context: ../frontend
+#      dockerfile: Dockerfile
     volumes:
       - ../frontend/:/app/result_build/
 
