@@ -265,7 +265,7 @@ class Api {
   // subscriptions
 
   getSubscriptions ({
-    page, 
+    page,
     limit = 6,
     recipes_limit = 3
   }) {
@@ -400,4 +400,4 @@ class Api {
   }
 }
 
-export default new Api(process.env.API_URL || 'http://web:8000', { 'content-type': 'application/json' })
+export default new Api(process.env.API_URL || 'http://localhost', { 'content-type': 'application/json' })

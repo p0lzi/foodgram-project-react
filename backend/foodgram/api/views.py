@@ -1,18 +1,18 @@
 import re
-from io import StringIO
 
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from recipe.models import Basket, Favorite, Ingredient, Recipe, Tag
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from users.models import Subscribe, User
 
+from recipe.models import Basket, Favorite, Ingredient, Recipe, Tag
+from users.models import Subscribe, User
 from .filters import RecipeFilter
 from .serializers import (FavoriteSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeSerializer,
@@ -41,7 +41,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
     permission_classes = (AllowAny,)
     queryset = Recipe.objects.all()
-    ordering = ('-created',)
+    ordering = ('id',)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
@@ -59,26 +59,24 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def send_file(ingredients):
-        result = (["shopping cart is empty"] if not ingredients else
-                  [f"{obj.get('recipe__ingredients__ingredient__name')}: "
-                   f"{obj.get('recipe__ingredients__amount__sum')}\n"
-                   for obj in ingredients])
-        buffer = StringIO()
-        buffer.writelines(result)
-        buffer.seek(0)
-        return Response(
-            buffer.read(),
-            headers={
-                'Content-Disposition':
-                    'as_attachment=True; filename="shopping_cart.txt"'},
-            content_type='text/plain')
+        text = ("shopping cart is empty" if not ingredients else
+                "\n".join([
+                    (f"{obj.get('recipe__ingredients__ingredient__name')}: "
+                     f"{obj.get('recipe__ingredients__amount__sum')}")
+                    for obj in ingredients]))
+        response = HttpResponse(text, content_type='text/plain')
+        response['Content-Disposition'] = (
+            'attachment; filename=foodgram_shopping_cart.txt')
+        return response
 
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
-        ingredients = request.user.baskets.prefetch_related("recipe").values(
+        ingredients = request.user.baskets.prefetch_related(
+            "recipe").values(
             "recipe__ingredients__ingredient__name").annotate(
-            Sum("recipe__ingredients__amount"))
+            Sum("recipe__ingredients__amount")).order_by(
+            "recipe__ingredients__ingredient__name")
         return self.send_file(ingredients)
 
     @action(detail=True, methods=['post'],

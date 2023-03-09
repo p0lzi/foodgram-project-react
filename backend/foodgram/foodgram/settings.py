@@ -10,6 +10,9 @@ DEBUG = True if os.getenv('DEBUG', default="True") == 'True' else False
 
 ALLOWED_HOSTS = [os.getenv('ALLOWED_HOST', default='*')]
 
+EXTERNAL_ADDRESS = 'http://' + os.getenv('EXTERNAL_ADDRESS',
+                                         default=r'localhost')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -69,7 +72,7 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', default="postgres"),
         'HOST': os.getenv('DB_HOST', default="localhost"),
         'PORT': os.getenv('DB_PORT', default="5432"),
-    } if not os.getenv('USE_SQLITE', default=True) else {
+    } if not os.getenv('USE_SQLITE', default='True') == 'True' else {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
@@ -115,8 +118,8 @@ AUTH_USER_MODEL = 'users.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

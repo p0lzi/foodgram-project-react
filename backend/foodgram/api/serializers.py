@@ -1,3 +1,6 @@
+from urllib.parse import urljoin
+
+from django.conf import settings
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -72,13 +75,13 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientInRecipeSerializer(many=True)
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    image = Base64ImageField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
         fields = (
             "id", "tags", "author", "ingredients", "is_favorited",
-            "is_in_shopping_cart", "name", "image", "text", "cooking_time",)
+            "is_in_shopping_cart", "name", "image", "text", "cooking_time")
 
     def get_is_favorited(self, obj):
         request = self.context.get('request')
@@ -90,7 +93,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         return (request and request.user.is_authenticated
                 and request.user.baskets.filter(
-                    recipe__name=obj).exists())
+                    recipe=obj).exists())
+
+    @staticmethod
+    def get_image(obj):
+        return urljoin(settings.EXTERNAL_ADDRESS, obj.image.url)
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
@@ -184,7 +191,7 @@ class SubscriptionsSerializer(UserSerializer):
 
     def get_recipes(self, obj):
         return RecipeForUserSerializer(
-            obj.recipes.order_by("-created")[:self.context.get(
+            obj.recipes.order_by("id")[:self.context.get(
                 'recipes_limit')],
             many=True, read_only=True).data
 

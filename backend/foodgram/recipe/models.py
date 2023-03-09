@@ -1,7 +1,6 @@
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
-
 from users.models import User
 
 
@@ -74,14 +73,14 @@ class Recipe(BaseModel):
         through='TagOfRecipes',
         verbose_name='Ингридиенты'
     )
-    cooking_time = models.PositiveSmallIntegerField('Время приготовления',)
-    created = models.DateTimeField("Время создания рецепта",
-                                   auto_now_add=True)
+    cooking_time = models.PositiveSmallIntegerField(
+        'Время приготовления',
+        validators=[MinValueValidator(1, 'Число дожно быть больше 1')])
 
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ("-created",)
+        ordering = ('-id',)
 
 
 class IngredientInRecipe(models.Model):
@@ -91,7 +90,9 @@ class IngredientInRecipe(models.Model):
                                verbose_name='Рецепт')
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE,
                                    verbose_name='Ингредиент')
-    amount = models.PositiveSmallIntegerField('Количество')
+    amount = models.PositiveSmallIntegerField(
+        'Количество',
+        validators=[MinValueValidator(1, 'Число дожно быть больше 1')])
 
     class Meta:
         constraints = [
@@ -120,14 +121,10 @@ class BasicModelOfUserRecipeRelationship(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE,
         verbose_name='Пользователь',
-        # related_name='%(class)s',
-        # related_query_name='%(class)s'
     )
     recipe = models.ForeignKey(
         Recipe, on_delete=models.CASCADE,
         verbose_name='Рецепт'
-        # related_name='in_%(class)s_of_users',
-        # related_query_name='in_%(class)s_of_users'
     )
 
     class Meta:
