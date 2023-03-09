@@ -23,15 +23,23 @@ class RecipeAdmin(admin.ModelAdmin):
     """ Класс для управления рецептами в админке. """
     inlines = [IngredientInline, TagsInline]
 
-    list_display = ('name', 'author', 'get_tags', 'get_quantity_in_favorites')
+    list_display = ('name', 'author', 'get_tags', 'get_ingredients',
+                    'get_quantity_in_favorites')
     list_filter = ('name', 'author', 'tags__name')
     search_fields = ('name', 'author')
     empty_value_display = '-пусто-'
 
-    def get_tags(self, obj):
-        return ", ".join([tag.name for tag in obj.tags.all()])
+    @staticmethod
+    def get_ingredients(obj):
+        return ', '.join([ingredient.ingredient
+                          for ingredient in obj.ingredients.all()])
 
-    def get_quantity_in_favorites(self, obj):
+    @staticmethod
+    def get_tags(obj):
+        return ', '.join([tag.name for tag in obj.tags.all()])
+
+    @staticmethod
+    def get_quantity_in_favorites(obj):
         return obj.favorites.count()
 
     get_tags.short_description = 'Теги'

@@ -45,24 +45,24 @@ class RecipeViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
-        if self.action in ("create", "partial_update"):
+        if self.action in ('create', 'partial_update'):
             return RecipeCreateSerializer
         return RecipeSerializer
 
     @staticmethod
     def obj_create(serializer, request, pk):
-        serializer = serializer(data={"recipe_id": pk,
-                                      "user_id": request.user.pk})
+        serializer = serializer(data={'recipe_id': pk,
+                                      'user_id': request.user.pk})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
     def send_file(ingredients):
-        text = ("shopping cart is empty" if not ingredients else
-                "\n".join([
-                    (f"{obj.get('recipe__ingredients__ingredient__name')}: "
-                     f"{obj.get('recipe__ingredients__amount__sum')}")
+        text = ('shopping cart is empty' if not ingredients else
+                '\n'.join([
+                    (f'{obj.get("recipe__ingredients__ingredient__name")}: '
+                     f'{obj.get("recipe__ingredients__amount__sum")}')
                     for obj in ingredients]))
         response = HttpResponse(text, content_type='text/plain')
         response['Content-Disposition'] = (
@@ -73,10 +73,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
         ingredients = request.user.baskets.prefetch_related(
-            "recipe").values(
-            "recipe__ingredients__ingredient__name").annotate(
-            Sum("recipe__ingredients__amount")).order_by(
-            "recipe__ingredients__ingredient__name")
+            'recipe').values(
+            'recipe__ingredients__ingredient__name').annotate(
+            Sum('recipe__ingredients__amount')).order_by(
+            'recipe__ingredients__ingredient__name')
         return self.send_file(ingredients)
 
     @action(detail=True, methods=['post'],
@@ -116,11 +116,11 @@ class SubscriptionsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
         if page is not None:
             serializer = self.get_serializer(page, many=True, context={
-                "user": request.user,
+                'user': request.user,
                 'recipes_limit': (
                     lambda obj: int(obj)
                     if re.fullmatch(r"^\d+$", obj) else None)(
-                    request.query_params.get("recipes_limit", ""))})
+                    request.query_params.get('recipes_limit', ''))})
             return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
@@ -132,8 +132,8 @@ class SubscribeView(APIView):
     @staticmethod
     def post(request, user_id):
         serializer = SubscribeSerializer(data={
-            "author_id": user_id,
-            "user_id": request.user.pk})
+            'author_id': user_id,
+            'user_id': request.user.pk})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)

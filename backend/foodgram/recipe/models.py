@@ -131,14 +131,14 @@ class BasicModelOfUserRecipeRelationship(models.Model):
         abstract = True
 
     def __str__(self):
-        return f"{self.user} {self.recipe}"
+        return f'{self.user} {self.recipe}'
 
 
 class Favorite(BasicModelOfUserRecipeRelationship):
     """ Любимые рецепты пользователей"""
 
     class Meta:
-        default_related_name = "favorites"
+        default_related_name = 'favorites'
         verbose_name = 'Любимый рецепт'
         verbose_name_plural = 'Любимые рецепты'
         constraints = [
@@ -153,7 +153,7 @@ class Basket(BasicModelOfUserRecipeRelationship):
     """ Корзина рецептов пользователей"""
 
     class Meta:
-        default_related_name = "baskets"
+        default_related_name = 'baskets'
         verbose_name = 'Рецепт в корзине'
         verbose_name_plural = 'Рецепты в корзине'
         constraints = [
